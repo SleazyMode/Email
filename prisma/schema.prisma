@@ -1,0 +1,158 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "sqlite"
+  url      = env("DATABASE_URL")
+}
+
+enum UserRole {
+  ADMIN
+  STAFF
+  RECIPIENT
+}
+
+enum NoticeStatus {
+  DRAFT
+  SENT
+  NOTIFIED
+  VIEWED
+  ACKNOWLEDGED
+  ANCHORED
+}
+
+enum NoticeCategory {
+  TAX
+  LICENSING
+  ZONING
+  COMPLIANCE
+  UTILITIES
+  GENERAL
+}
+
+enum EventType {
+  NOTICE_CREATED
+  NOTICE_SENT
+  RECIPIENT_NOTIFIED
+  PORTAL_ACCESSED
+  NOTICE_VIEWED
+  ATTACHMENT_DOWNLOADED
+  NOTICE_ACKNOWLEDGED
+  EVIDENCE_COMPILED
+  BLOCKCHAIN_ANCHOR_SUBMITTED
+  BLOCKCHAIN_ANCHOR_CONFIRMED
+}
+
+model User {
+  id             String            @id @default(cuid())
+  email          String            @unique
+  passwordHash   String?
+  role           UserRole
+  name           String
+  department     String?
+  oneTimeCode    String?
+  codeExpiresAt  DateTime?
+  createdAt      DateTime          @default(now())
+  updatedAt      DateTime          @updatedAt
+  sentNotices    Notice[]          @relation("NoticeSender")
+  receivedNotices Notice[]         @relation("NoticeRecipient")
+  sessions       Session[]
+}
+
+model Session {
+  id         String   @id @default(cuid())
+  token      String   @unique
+  userId     String
+  expiresAt  DateTime
+  createdAt  DateTime @default(now())
+  user       User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+}
+
+model Notice {
+  id                       String          @id @default(cuid())
+  publicId                 String          @unique
+  senderId                 String
+  recipientId              String
+  subject                  String
+  body                     String
+  noticeCategory           NoticeCategory
+  status                   NoticeStatus    @default(DRAFT)
+  bodyHash                 String
+  noticeHash               String
+  attachmentMerkleRoot     String?
+  createdAt                DateTime        @default(now())
+  sentAt                   DateTime?
+  notifiedAt               DateTime?
+  viewedAt                 DateTime?
+  acknowledgedAt           DateTime?
+  anchorStatus             String          @default("not_anchored")
+  anchorReceiptId          String?
+  anchorHash               String?
+  anchorTimestamp          DateTime?
+  createdBy                User            @relation("NoticeSender", fields: [senderId], references: [id])
+  recipient                User            @relation("NoticeRecipient", fields: [recipientId], references: [id])
+  attachments              Attachment[]
+  events                   AuditEvent[]
+  notifications            Notification[]
+  anchorMemberships        NoticeAnchorMembership[]
+}
+
+model Attachment {
+  id            String   @id @default(cuid())
+  noticeId      String
+  originalName  String
+  storagePath   String
+  mimeType      String
+  byteSize      Int
+  sha256        String
+  createdAt     DateTime @default(now())
+  notice        Notice    @relation(fields: [noticeId], references: [id], onDelete: Cascade)
+}
+
+model AuditEvent {
+  id          String    @id @default(cuid())
+  noticeId    String
+  eventType   EventType
+  actorId     String?
+  actorLabel  String
+  summary     String
+  metadata    String
+  createdAt   DateTime  @default(now())
+  notice      Notice    @relation(fields: [noticeId], references: [id], onDelete: Cascade)
+}
+
+model Notification {
+  id           String   @id @default(cuid())
+  noticeId      String
+  recipientEmail String
+  subject      String
+  body         String
+  status       String
+  createdAt    DateTime @default(now())
+  notice       Notice    @relation(fields: [noticeId], references: [id], onDelete: Cascade)
+}
+
+model AnchorReceipt {
+  id                String                  @id @default(cuid())
+  anchorId          String                  @unique
+  batchRoot         String
+  previousAnchorId  String?
+  ledgerProof       String
+  status            String
+  anchoredAt        DateTime
+  createdAt         DateTime                @default(now())
+  memberships       NoticeAnchorMembership[]
+}
+
+model NoticeAnchorMembership {
+  id               String         @id @default(cuid())
+  noticeId         String
+  anchorReceiptId  String
+  leafHash         String
+  proofPath        String
+  notice           Notice         @relation(fields: [noticeId], references: [id], onDelete: Cascade)
+  anchorReceipt    AnchorReceipt  @relation(fields: [anchorReceiptId], references: [id], onDelete: Cascade)
+
+  @@unique([noticeId, anchorReceiptId])
+}
