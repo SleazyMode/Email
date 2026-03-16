@@ -62,16 +62,21 @@ export function StatCard({
 }
 
 export function StatusBadge({ value }: { value: string }) {
+  const normalized = value.toLowerCase();
   const palette =
-    value.toLowerCase() === "anchored"
+    normalized === "anchored" || normalized === "passed" || normalized === "verified" || normalized === "confirmed"
       ? "border-success/20 bg-success/10 text-success"
-      : value.toLowerCase() === "acknowledged"
-        ? "border-civic/20 bg-civic/10 text-civic"
-        : value.toLowerCase() === "viewed"
-          ? "border-warning/20 bg-warning/10 text-warning"
-          : value.toLowerCase() === "draft"
-            ? "border-slate-300 bg-slate-100 text-slate-700"
-            : "border-border bg-slate-50 text-ink";
+      : normalized === "failed"
+        ? "border-rose-200 bg-rose-50 text-rose-700"
+        : normalized === "pending" || normalized === "not run"
+          ? "border-slate-300 bg-slate-100 text-slate-700"
+          : normalized === "acknowledged"
+            ? "border-civic/20 bg-civic/10 text-civic"
+            : normalized === "viewed"
+              ? "border-warning/20 bg-warning/10 text-warning"
+              : normalized === "draft"
+                ? "border-slate-300 bg-slate-100 text-slate-700"
+                : "border-border bg-slate-50 text-ink";
 
   return (
     <span className={cn("inline-flex rounded-full border px-3 py-1 text-xs font-semibold uppercase tracking-wide", palette)}>
@@ -118,9 +123,9 @@ export function AnchorStatusBadge({
 
 export function DataRow({ label, value }: { label: string; value: React.ReactNode }) {
   return (
-    <div className="grid gap-1 border-b border-slate-100 py-3 md:grid-cols-[180px_1fr]">
+    <div className="grid gap-1 border-b border-slate-100 py-3 md:grid-cols-[180px_minmax(0,1fr)]">
       <dt className="text-sm font-medium text-slate-500">{label}</dt>
-      <dd className="text-sm text-ink">{value}</dd>
+      <dd className="min-w-0 text-sm text-ink">{value}</dd>
     </div>
   );
 }

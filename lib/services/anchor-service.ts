@@ -1,15 +1,28 @@
 import { EventType, NoticeStatus } from "@prisma/client";
 
-import { createMerkleProof, verifyMerkleProof, type MerkleProofStep, buildMerkleTree } from "@/lib/crypto/merkle";
+import { buildMerkleTree, createMerkleProof, type MerkleProofStep, verifyMerkleProof } from "@/lib/crypto/merkle";
 import { randomToken, sha256 } from "@/lib/crypto/hashing";
 import { prisma } from "@/lib/db";
 import { auditService } from "@/lib/services/audit-service";
 
 export type AnchorVerificationResult = {
   passed: boolean;
-  anchorVerified: boolean;
-  integrityVerified: boolean;
+  status: "passed" | "failed" | "not_anchored";
   reason: string;
+  anchoredHashMatchesExpected: boolean;
+  transactionSignaturePresent: boolean;
+  clusterPresent: boolean;
+  slotPresent: boolean;
+  commitmentPresent: boolean;
+  anchorTimestampPresent: boolean;
+  proofVerified: boolean;
+  cluster: string | null;
+  transactionSignature: string | null;
+  slot: number | null;
+  commitment: string | null;
+  explorerUrl: string | null;
+  anchorTimestamp: Date | null;
+  anchorConfirmedAt: Date | null;
 };
 
 export interface AnchorService {
@@ -17,7 +30,45 @@ export interface AnchorService {
   verifyNoticeAnchor(noticeId: string): Promise<AnchorVerificationResult>;
 }
 
-export class MockBlockchainLedger implements AnchorService {
+function buildExplorerUrl(cluster: string, transactionSignature: string) {
+  if (cluster === "mainnet-beta") {
+    return `https://explorer.solana.com/tx/${transactionSignature}`;
+  }
+
+  if (cluster === "devnet" || cluster === "testnet") {
+    return `https://explorer.solana.com/tx/${transactionSignature}?cluster=${cluster}`;
+  }
+
+  return null;
+}
+
+function createPseudoSolanaSignature(seed: string) {
+  const alphabet = "123456789ABCDEFGHJKLMNPQRSTUVWXYZabcdefghijkmnopqrstuvwxyz";
+  const digest = sha256(seed);
+
+  return Array.from({ length: 88 }, (_, index) => {
+    const pair = digest.slice((index * 2) % digest.length, ((index * 2) % digest.length) + 2);
+    const value = Number.parseInt(pair.padEnd(2, "0"), 16);
+    return alphabet[value % alphabet.length];
+  }).join("");
+}
+
+function createSolanaMetadata(anchorId: string, root: string) {
+  const cluster = process.env.SOLANA_DEMO_CLUSTER ?? "localnet";
+  const transactionSignature = createPseudoSolanaSignature(`solana:${anchorId}:${root}`);
+  const slot = Number.parseInt(sha256(`slot:${anchorId}`).slice(0, 8), 16);
+  const commitment = "finalized";
+
+  return {
+    cluster,
+    transactionSignature,
+    slot,
+    commitment,
+    explorerUrl: buildExplorerUrl(cluster, transactionSignature)
+  };
+}
+
+export class MockSolanaAnchorService implements AnchorService {
   async anchorNoticeBatch(noticeIds: string[], actorId: string, actorLabel: string) {
     const notices = await prisma.notice.findMany({
       where: {
@@ -44,7 +95,9 @@ export class MockBlockchainLedger implements AnchorService {
       }
     });
 
-    const anchorId = `ANCHOR-${new Date().getFullYear()}-${randomToken(4).toUpperCase()}`;
+    const anchorId = `SOL-${new Date().getFullYear()}-${randomToken(4).toUpperCase()}`;
+    const anchoredAt = new Date();
+    const solanaMetadata = createSolanaMetadata(anchorId, root);
     const ledgerProof = {
       algorithm: "sha256-merkle-v1",
       receiptHash: sha256(`${previous?.batchRoot ?? "GENESIS"}:${root}:${anchorId}`),
@@ -58,7 +111,13 @@ export class MockBlockchainLedger implements AnchorService {
         previousAnchorId: previous?.anchorId ?? null,
         ledgerProof: JSON.stringify(ledgerProof),
         status: "confirmed",
-        anchoredAt: new Date()
+        cluster: solanaMetadata.cluster,
+        transactionSignature: solanaMetadata.transactionSignature,
+        slot: solanaMetadata.slot,
+        commitment: solanaMetadata.commitment,
+        explorerUrl: solanaMetadata.explorerUrl,
+        anchoredAt,
+        anchorConfirmedAt: anchoredAt
       }
     });
 
@@ -90,10 +149,14 @@ export class MockBlockchainLedger implements AnchorService {
         eventType: EventType.BLOCKCHAIN_ANCHOR_SUBMITTED,
         actorId,
         actorLabel,
-        summary: `Anchor submitted to local evidence ledger (${anchorId}).`,
+        summary: `Solana anchor submitted (${anchorId}) on ${solanaMetadata.cluster}.`,
         metadata: {
           anchorId,
-          batchRoot: root
+          batchRoot: root,
+          cluster: solanaMetadata.cluster,
+          transactionSignature: solanaMetadata.transactionSignature,
+          slot: solanaMetadata.slot,
+          commitment: solanaMetadata.commitment
         }
       });
 
@@ -102,10 +165,14 @@ export class MockBlockchainLedger implements AnchorService {
         eventType: EventType.BLOCKCHAIN_ANCHOR_CONFIRMED,
         actorId,
         actorLabel,
-        summary: `Anchor confirmed in tamper-evident ledger (${anchorId}).`,
+        summary: `Solana anchor confirmed (${anchorId}) with ${solanaMetadata.commitment} commitment.`,
         metadata: {
           anchorId,
-          batchRoot: root
+          batchRoot: root,
+          cluster: solanaMetadata.cluster,
+          transactionSignature: solanaMetadata.transactionSignature,
+          slot: solanaMetadata.slot,
+          commitment: solanaMetadata.commitment
         }
       });
     }
@@ -113,7 +180,7 @@ export class MockBlockchainLedger implements AnchorService {
     return anchorId;
   }
 
-  async verifyNoticeAnchor(noticeId: string) {
+  async verifyNoticeAnchor(noticeId: string): Promise<AnchorVerificationResult> {
     const membership = await prisma.noticeAnchorMembership.findFirst({
       where: { noticeId },
       include: {
@@ -125,28 +192,68 @@ export class MockBlockchainLedger implements AnchorService {
     if (!membership) {
       return {
         passed: false,
-        integrityVerified: false,
-        anchorVerified: false,
-        reason: "No anchor receipt exists for this notice."
+        status: "not_anchored",
+        reason: "No Solana anchor receipt exists for this notice.",
+        anchoredHashMatchesExpected: false,
+        transactionSignaturePresent: false,
+        clusterPresent: false,
+        slotPresent: false,
+        commitmentPresent: false,
+        anchorTimestampPresent: false,
+        proofVerified: false,
+        cluster: null,
+        transactionSignature: null,
+        slot: null,
+        commitment: null,
+        explorerUrl: null,
+        anchorTimestamp: null,
+        anchorConfirmedAt: null
       };
     }
 
     const proof = JSON.parse(membership.proofPath) as MerkleProofStep[];
-    const anchorVerified = verifyMerkleProof(
+    const proofVerified = verifyMerkleProof(
       membership.leafHash,
       proof,
       membership.anchorReceipt.batchRoot
     );
+    const anchoredHashMatchesExpected =
+      membership.leafHash === membership.notice.noticeHash &&
+      membership.notice.anchorHash === membership.anchorReceipt.batchRoot;
+    const transactionSignaturePresent = Boolean(membership.anchorReceipt.transactionSignature);
+    const clusterPresent = Boolean(membership.anchorReceipt.cluster);
+    const slotPresent = membership.anchorReceipt.slot !== null;
+    const commitmentPresent = Boolean(membership.anchorReceipt.commitment);
+    const anchorTimestampPresent = Boolean(membership.anchorReceipt.anchoredAt);
+    const passed =
+      proofVerified &&
+      anchoredHashMatchesExpected &&
+      transactionSignaturePresent &&
+      clusterPresent &&
+      anchorTimestampPresent;
 
     return {
-      passed: anchorVerified,
-      integrityVerified: anchorVerified,
-      anchorVerified,
-      reason: anchorVerified
-        ? "Notice hash is included in the anchored ledger record."
-        : "Merkle proof verification failed."
+      passed,
+      status: passed ? "passed" : "failed",
+      reason: passed
+        ? "The anchored notice hash matches the stored notice hash and the Solana receipt metadata is present."
+        : "The Solana anchor receipt is incomplete or does not match the stored notice hash.",
+      anchoredHashMatchesExpected,
+      transactionSignaturePresent,
+      clusterPresent,
+      slotPresent,
+      commitmentPresent,
+      anchorTimestampPresent,
+      proofVerified,
+      cluster: membership.anchorReceipt.cluster,
+      transactionSignature: membership.anchorReceipt.transactionSignature,
+      slot: membership.anchorReceipt.slot,
+      commitment: membership.anchorReceipt.commitment,
+      explorerUrl: membership.anchorReceipt.explorerUrl,
+      anchorTimestamp: membership.anchorReceipt.anchoredAt,
+      anchorConfirmedAt: membership.anchorReceipt.anchorConfirmedAt
     };
   }
 }
 
-export const anchorService = new MockBlockchainLedger();
+export const anchorService = new MockSolanaAnchorService();

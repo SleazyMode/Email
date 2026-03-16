@@ -1,43 +1,65 @@
 import Link from "next/link";
 
-import { logoutAction, verifyEvidenceAction } from "@/app/actions";
-import { AnchorStatusBadge, AppNav, Card, PageShell, StatCard, StatusBadge } from "@/components/ui";
+import { logoutAction } from "@/app/actions";
+import { AppNav, Card, PageShell, StatCard, StatusBadge } from "@/components/ui";
 import { requireMunicipalUser } from "@/lib/auth/session";
-import { evidenceService } from "@/lib/services/evidence-service";
 import { noticeService } from "@/lib/services/notice-service";
 import { formatDate } from "@/lib/utils";
 
-function getDashboardVerificationLabel(
-  notice: {
-    anchorStatus: string | null;
-  },
-  verification: {
-    passed: boolean;
-  }
-) {
-  if (notice.anchorStatus !== "anchored") {
-    return "Pending anchor";
+function getLifecycleStatus(notice: {
+  acknowledgedAt?: Date | string | null;
+  viewedAt?: Date | string | null;
+  notifiedAt?: Date | string | null;
+  sentAt?: Date | string | null;
+  status: string;
+}) {
+  if (notice.acknowledgedAt) {
+    return "Acknowledged";
   }
 
-  return verification.passed ? "Verified" : "Verification failed";
+  if (notice.viewedAt) {
+    return "Viewed";
+  }
+
+  if (notice.notifiedAt) {
+    return "Notified";
+  }
+
+  if (notice.sentAt) {
+    return "Sent";
+  }
+
+  return notice.status;
+}
+
+function getSolanaAnchorStatus(notice: {
+  anchorStatus?: string | null;
+  anchorReceiptId?: string | null;
+}) {
+  if (notice.anchorStatus?.toLowerCase() === "failed") {
+    return "Failed";
+  }
+
+  if (notice.anchorReceiptId || notice.anchorStatus?.toLowerCase() === "anchored") {
+    return "Confirmed";
+  }
+
+  return "Pending";
 }
 
 export default async function AdminDashboard({
-  searchParams
+  searchParams: _searchParams
 }: {
   searchParams: Promise<{ verified?: string }>;
 }) {
   const user = await requireMunicipalUser();
   const { notices, totals } = await noticeService.getDashboardData();
-  const query = await searchParams;
-  const verifiedPublicId = query.verified;
-  const verifiedNotice = verifiedPublicId ? notices.find((notice) => notice.publicId === verifiedPublicId) : null;
-  const inlineVerification = verifiedNotice ? await evidenceService.verifyNoticeIntegrity(verifiedNotice.id) : null;
+  await _searchParams;
 
   return (
     <PageShell
       title="Municipal Notice Dashboard"
-      subtitle="Track notice delivery, evidence generation, and blockchain-style anchor receipts across the full notice lifecycle."
+      subtitle="Track notice delivery, evidence generation, and Solana anchor receipts across the full notice lifecycle."
       actions={
         <div className="flex flex-wrap gap-3">
           <Link className="button-primary" href="/admin/notices/new">
@@ -88,7 +110,7 @@ export default async function AdminDashboard({
                 <th className="py-3 pr-4">Category</th>
                 <th className="py-3 pr-4">Status</th>
                 <th className="py-3 pr-4">Sent At</th>
-                <th className="py-3 pr-4">Blockchain Receipt</th>
+                <th className="py-3 pr-4">Solana Anchor</th>
                 <th className="py-3">Actions</th>
               </tr>
             </thead>
@@ -105,15 +127,16 @@ export default async function AdminDashboard({
                   </td>
                   <td className="py-4 pr-4">{notice.noticeCategory}</td>
                   <td className="py-4 pr-4">
-                    <StatusBadge value={notice.status} />
+                    <StatusBadge value={getLifecycleStatus(notice)} />
                   </td>
                   <td className="py-4 pr-4">{formatDate(notice.sentAt)}</td>
                   <td className="py-4 pr-4">
-                    <AnchorStatusBadge
-                      status={notice.anchorStatus}
-                      receiptId={notice.anchorReceiptId}
-                      anchoredAt={notice.anchorTimestamp}
-                    />
+                    <div className="space-y-2">
+                      <StatusBadge value={getSolanaAnchorStatus(notice)} />
+                      <div className="text-xs text-slate-500">
+                        <p>{notice.anchorReceiptId ?? "Receipt pending"}</p>
+                      </div>
+                    </div>
                   </td>
                   <td className="py-4">
                     <div className="flex flex-wrap gap-2">
@@ -123,18 +146,6 @@ export default async function AdminDashboard({
                       <Link className="button-secondary" href={`/admin/evidence/${notice.publicId}`}>
                         Evidence
                       </Link>
-                      <form action={verifyEvidenceAction}>
-                        <input name="publicId" type="hidden" value={notice.publicId} />
-                        <input name="source" type="hidden" value="dashboard" />
-                        <button className="button-secondary" type="submit">
-                          Verify Evidence
-                        </button>
-                      </form>
-                      {verifiedPublicId === notice.publicId && inlineVerification ? (
-                        <span className="self-center text-xs font-semibold uppercase tracking-wide text-slate-600">
-                          {getDashboardVerificationLabel(notice, inlineVerification)}
-                        </span>
-                      ) : null}
                     </div>
                   </td>
                 </tr>

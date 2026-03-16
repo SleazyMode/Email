@@ -140,7 +140,13 @@ model AnchorReceipt {
   previousAnchorId  String?
   ledgerProof       String
   status            String
+  cluster           String?
+  transactionSignature String?
+  slot              Int?
+  commitment        String?
+  explorerUrl       String?
   anchoredAt        DateTime
+  anchorConfirmedAt DateTime?
   createdAt         DateTime                @default(now())
   memberships       NoticeAnchorMembership[]
 }

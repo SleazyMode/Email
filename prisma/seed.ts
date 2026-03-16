@@ -125,9 +125,9 @@ async function main() {
   await evidenceService.refreshEvidence(noticeOne.id);
 
   await appendTimeline(noticeOne.id, staff.id, staff.name, [
-    { eventType: EventType.NOTICE_CREATED, summary: "Notice drafted and evidence snapshot created." },
-    { eventType: EventType.EVIDENCE_COMPILED, summary: "Body hash, attachment hashes, and notice hash compiled." },
-    { eventType: EventType.NOTICE_SENT, summary: "Notice marked as sent to the intended recipient." },
+    { eventType: EventType.NOTICE_CREATED, summary: "Notice record created for the intended recipient." },
+    { eventType: EventType.EVIDENCE_COMPILED, summary: "Evidence snapshot created with body hash, attachment hashes, and notice hash." },
+    { eventType: EventType.NOTICE_SENT, summary: "Notice sent to the intended recipient." },
     { eventType: EventType.RECIPIENT_NOTIFIED, summary: "Recipient notification generated for citizen@example.com." }
   ]);
 

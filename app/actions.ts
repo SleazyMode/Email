@@ -114,12 +114,27 @@ export async function acknowledgeNoticeAction(formData: FormData) {
 export async function verifyEvidenceAction(formData: FormData) {
   await requireMunicipalUser();
   const publicId = String(formData.get("publicId") ?? "");
-  const source = String(formData.get("source") ?? "");
+  const anchor = String(formData.get("anchor") ?? "");
+  const params = new URLSearchParams();
+  params.set("integrity", "1");
 
-  if (source === "dashboard") {
-    revalidatePath("/admin");
-    redirect(`/admin?verified=${encodeURIComponent(publicId)}`);
+  if (anchor === "1") {
+    params.set("anchor", "1");
   }
 
-  redirect(`/admin/evidence/${publicId}?verification=1`);
+  redirect(`/admin/evidence/${publicId}?${params.toString()}`);
+}
+
+export async function verifyAnchorAction(formData: FormData) {
+  await requireMunicipalUser();
+  const publicId = String(formData.get("publicId") ?? "");
+  const integrity = String(formData.get("integrity") ?? "");
+  const params = new URLSearchParams();
+  params.set("anchor", "1");
+
+  if (integrity === "1") {
+    params.set("integrity", "1");
+  }
+
+  redirect(`/admin/evidence/${publicId}?${params.toString()}`);
 }

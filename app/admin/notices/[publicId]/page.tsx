@@ -18,7 +18,7 @@ export default async function NoticeDetailPage({
   return (
     <PageShell
       title={`Notice ${notice.publicId}`}
-      subtitle="Operational detail for sending, notifying, viewing, acknowledging, and anchoring this official notice."
+      subtitle="Operational detail for sending, notifying, viewing, acknowledging, and anchoring this official notice to Solana-style receipt metadata."
       actions={
         <div className="flex flex-wrap gap-3">
           {notice.sentAt ? null : (
@@ -73,7 +73,7 @@ export default async function NoticeDetailPage({
         <div className="space-y-6">
           <Card className="border-civic/20 bg-civic/5">
             <p className="text-sm font-semibold uppercase tracking-[0.2em] text-civic">
-              Blockchain Anchor
+              Solana Anchor
             </p>
             <div className="mt-4 space-y-2 text-sm">
               <p>
@@ -89,7 +89,7 @@ export default async function NoticeDetailPage({
                 {formatDate(notice.anchorTimestamp)}
               </p>
               <p className="text-slate-600">
-                The portal record is hashed, logged, and anchored to the local mock evidence ledger. No notice content or PII is placed on the ledger.
+                The portal record is hashed, logged, and anchored to Solana-style receipt metadata. No notice content or PII is placed on the anchored record.
               </p>
             </div>
           </Card>
