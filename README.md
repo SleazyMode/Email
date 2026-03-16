@@ -1,4 +1,4 @@
-**Municipal Digital Notice System**
+# **Municipal Digital Notice System**
 
 This repository contains a prototype infrastructure for verifiable digital notice delivery. The system adds an evidence layer on top of standard email notifications, allowing organizations to generate and audit important communications with a tamper-evident record of what was sent, when it was sent, and how recipients interacted with the notice.
 
@@ -28,7 +28,7 @@ Integrity verification confirms that the stored notice record has not been modif
 
 Together these mechanisms create a tamper-evident audit trail for digital notice delivery, enabling organizations to combine standard email notifications with independently verifiable cryptographic evidence of notice issuance and recipient interaction.
 
-**Municipal Digital Notice Prototype**
+# **Municipal Digital Notice Prototype**
 
 This repository implements a local demo of a blockchain-anchored notice system. Municipal staff create and send official notices, recipients access notices through a secure portal, and the system generates tamper-evident evidence records anchored to a local mock blockchain ledger.
 ## Stack
