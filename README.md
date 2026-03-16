@@ -12,17 +12,17 @@ Recipients are notified through standard email channels and directed to a secure
 
 For each notice the system generates an Evidence Report containing:
 
-canonical notice metadata
+- canonical notice metadata
 
-cryptographic hashes of the notice body and attachments
+- cryptographic hashes of the notice body and attachments
 
-attachment Merkle root
+- attachment Merkle root
 
-recomputed integrity verification results
+- recomputed integrity verification results
 
-Solana anchor receipt metadata
+- Solana anchor receipt metadata
 
-a chronological timeline of notice lifecycle events
+- a chronological timeline of notice lifecycle events
 
 Integrity verification confirms that the stored notice record has not been modified. Anchor verification confirms that the notice hash matches the value recorded in the blockchain transaction.
 
