@@ -1,4 +1,4 @@
-Municipal Digital Notice System (Non-Repudiated Email Infrastructure)
+**Municipal Digital Notice System (Non-Repudiated Email Infrastructure)**
 
 This project demonstrates a prototype infrastructure for verifiable digital notice delivery. The system provides an evidence layer on top of standard email notifications, allowing organizations to record and audit important communications with a tamper-evident record of what was sent, when it was sent, and how recipients interacted with the notice.
 
