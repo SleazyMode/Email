@@ -1,34 +1,36 @@
-**Municipal Digital Notice System (Non-Repudiated Email Infrastructure)**
+**Municipal Digital Notice System**
 
-This project demonstrates a prototype infrastructure for verifiable digital notice delivery. The system provides an evidence layer on top of standard email notifications, allowing organizations to record and audit important communications with a tamper-evident record of what was sent, when it was sent, and how recipients interacted with the notice.
+This repository contains a prototype infrastructure for verifiable digital notice delivery. The system adds an evidence layer on top of standard email notifications, allowing organizations to generate and audit important communications with a tamper-evident record of what was sent, when it was sent, and how recipients interacted with the notice.
 
-Traditional email systems such as Gmail or Outlook handle message transport but do not provide a reliable mechanism for proving message integrity, delivery events, or recipient acknowledgement. This system addresses that limitation by generating a cryptographic evidence record for each notice and anchoring that record to a public blockchain.
+Traditional email platforms such as Gmail or Outlook handle message transport but do not provide a reliable mechanism for proving message integrity, delivery events, or recipient acknowledgement. This system addresses that limitation by generating a deterministic evidence record for each notice and anchoring that record to the Solana blockchain.
 
-When a notice is created, the platform generates a canonical evidence record that includes the notice contents, attachment hashes, recipient metadata, and timestamps. A deterministic SHA-256 hash is computed from this record to produce a unique notice hash representing the exact contents of the notice at the time it was issued.
+When a notice is created, the platform generates a canonical evidence record containing the notice body, attachment hashes, recipient metadata, and timestamps. A SHA-256 hash is computed from this canonical record to produce a unique notice hash representing the exact contents of the notice at the moment it was issued.
 
-This notice hash is then anchored to the Solana blockchain, creating an independently verifiable timestamped reference. No message contents or personal data are written on-chain; only cryptographic hashes and anchor metadata are recorded.
+The notice hash is then anchored to the Solana blockchain, creating an independently verifiable timestamp reference. No message contents or personal data are written on-chain; only cryptographic hashes and anchor metadata are recorded.
 
-Recipients are notified through standard email channels and directed to a secure portal where the notice can be viewed and acknowledged. The system records lifecycle events such as notice creation, notification, portal access, viewing, acknowledgement, and blockchain anchoring in an append-only audit log.
+Recipients are notified through standard email channels and directed to a secure portal where the notice can be viewed and acknowledged. Lifecycle events such as notice creation, notification generation, portal access, viewing, acknowledgement, and blockchain anchoring are recorded in an append-only audit log.
 
-For each notice, the system generates an Evidence Report containing:
+For each notice the system generates an Evidence Report containing:
 
-• canonical notice metadata
-• cryptographic hashes of the notice body and attachments
-• attachment Merkle root
-• recomputed integrity verification results
-• Solana anchor receipt metadata
-• a chronological timeline of notice lifecycle events
+canonical notice metadata
+
+cryptographic hashes of the notice body and attachments
+
+attachment Merkle root
+
+recomputed integrity verification results
+
+Solana anchor receipt metadata
+
+a chronological timeline of notice lifecycle events
 
 Integrity verification confirms that the stored notice record has not been modified. Anchor verification confirms that the notice hash matches the value recorded in the blockchain transaction.
 
-Together, these mechanisms create a tamper-evident audit trail for digital notice delivery, enabling organizations to combine familiar email notifications with independently verifiable cryptographic evidence of notice issuance and recipient interaction.
+Together these mechanisms create a tamper-evident audit trail for digital notice delivery, enabling organizations to combine standard email notifications with independently verifiable cryptographic evidence of notice issuance and recipient interaction.
 
-This repository contains a demonstration prototype illustrating the architecture, verification workflow, and evidence reporting model for such a system.
+**Municipal Digital Notice Prototype**
 
-# Municipal Digital Notice Prototype
-
-Local demo for a blockchain-backed municipal notice system. Municipal staff create and send official notices, recipients access notices through a secure portal, and the system generates tamper-evident evidence records anchored to a local mock blockchain ledger.
-
+This repository implements a local demo of a blockchain-anchored notice system. Municipal staff create and send official notices, recipients access notices through a secure portal, and the system generates tamper-evident evidence records anchored to a local mock blockchain ledger.
 ## Stack
 
 - Next.js App Router
